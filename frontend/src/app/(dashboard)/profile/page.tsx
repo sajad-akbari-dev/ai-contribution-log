@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getServerSession } from '@/actions/auth.actions'
+import { CopyUid } from '@/features/ai-log/components/CopyUid'
 
 export const metadata: Metadata = {
   title: 'Profile',
@@ -20,6 +21,15 @@ export default async function ProfilePage() {
           <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Email</p>
           <p className="mt-1 text-sm">{session?.email ?? '—'}</p>
         </div>
+        {session?.uid && (
+          <div>
+            <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">User ID</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Share this with a team owner so they can add you to their team.
+            </p>
+            <CopyUid uid={session.uid} />
+          </div>
+        )}
       </div>
     </div>
   )
