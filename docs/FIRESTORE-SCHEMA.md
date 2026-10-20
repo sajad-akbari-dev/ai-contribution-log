@@ -46,4 +46,45 @@ This enables **lazy migration** — when a document is read, check `_schemaVersi
 
 ---
 
+## `teams` collection
+
+**Path:** `/teams/{teamId}`
+**Access:** Members read; any signed-in user creates a team they own; only the owner updates, and only to add members. Never deleted.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | Yes | Team name, 1–60 characters. Immutable after creation. |
+| `ownerId` | `string` | Yes | UID of the creator. Immutable. |
+| `memberIds` | `string[]` | Yes | UIDs allowed to read/write the team's logs. Starts as `[ownerId]`; add-only; max 50. |
+| `createdAt` | `Timestamp` | Yes | Must equal the server time on create. |
+| `updatedAt` | `Timestamp` | Yes | Must equal the server time on every write. |
+| `_schemaVersion` | `1` | Yes | Schema version for lazy migration |
+
+**Why an array:** the rules need one cheap lookup (`uid in memberIds`) and the app needs one query (`where('memberIds', 'array-contains', uid)`).
+
+---
+
+## `aiLogs` collection
+
+**Path:** `/aiLogs/{logId}`
+**Access:** Team members read live logs; members create logs as themselves; only the author edits or soft-deletes. Hard-delete is disabled.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `teamId` | `string` | Yes | Team the log belongs to; author must be a member. Immutable. |
+| `userId` | `string` | Yes | Author — must equal the signed-in UID. Immutable. |
+| `phase` | `'requirements' \| 'design' \| 'build' \| 'test' \| 'deploy'` | Yes | SDLC phase |
+| `taskSummary` | `string` | Yes | 1–280 characters |
+| `outcome` | `'accepted' \| 'edited' \| 'rejected'` | Yes | What happened to the AI output |
+| `minutesSaved` | `number` | Yes | Whole number, 0–480 |
+| `createdAt` | `Timestamp` | Yes | Must equal the server time on create. Immutable. |
+| `updatedAt` | `Timestamp` | Yes | Must equal the server time on every write. |
+| `deletedAt` | `Timestamp \| null` | Yes | `null` while live; set to the server time to soft-delete. |
+| `_schemaVersion` | `1` | Yes | Schema version for lazy migration |
+
+**Queries:** the read rule requires `deletedAt == null`, so every list query must include `where('deletedAt', '==', null)` (see `useTeamLogs`). Lists are sorted in the browser, so no composite index is needed.
+**Writes:** made with the client SDK from the browser so the rules validate them — see `frontend/src/features/ai-log/lib/mutations.ts`.
+
+---
+
 <!-- Add new collection schemas below using the /firebase-collection skill -->

@@ -33,6 +33,28 @@ service cloud.firestore {
       return resource == null || !('deletedAt' in resource.data) || resource.data.deletedAt == null;
     }
 
+    // True when the caller's uid is listed in the given team's memberIds.
+    // Costs one document read (get) per evaluation.
+    function isTeamMember(teamId) {
+      return isAuthenticated()
+        && request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberIds;
+    }
+
+    // Field-level validation shared by aiLogs create and update.
+    function validAiLog(d) {
+      return d.keys().hasOnly(['teamId', 'userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
+        && d.keys().hasAll(['teamId', 'userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
+        && d.teamId is string
+        && d.userId == request.auth.uid
+        && d.phase in ['requirements', 'design', 'build', 'test', 'deploy']
+        && d.outcome in ['accepted', 'edited', 'rejected']
+        && d.taskSummary is string
+        && d.taskSummary.size() > 0 && d.taskSummary.size() <= 280
+        && d.minutesSaved is int
+        && d.minutesSaved >= 0 && d.minutesSaved <= 480
+        && d._schemaVersion == 1;
+    }
+
     // ── Collections ────────────────────────────────────────────────────────
 
     // users/{userId}
@@ -54,6 +76,64 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'updatedAt', '_schemaVersion']);
 
       allow delete: if false; // soft-delete only — set deletedAt field instead
+    }
+
+    // teams/{teamId}
+    // Members can read their team. Anyone signed in can create a team they own.
+    // Only the owner can update it, and only to add members (memberIds never shrinks).
+    match /teams/{teamId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.memberIds;
+
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['name', 'ownerId', 'memberIds', 'createdAt', 'updatedAt', '_schemaVersion'])
+        && request.resource.data.keys().hasAll(['name', 'ownerId', 'memberIds', 'createdAt', 'updatedAt', '_schemaVersion'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data._schemaVersion == 1;
+
+      allow update: if isAuthenticated()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'ownerId', 'memberIds', 'createdAt', 'updatedAt', '_schemaVersion'])
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+        && request.resource.data.memberIds.size() <= 50
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data._schemaVersion == 1;
+
+      allow delete: if false; // teams are never removed
+    }
+
+    // aiLogs/{logId}
+    // Team members can read the team's live logs. Authors create, edit and soft-delete their own.
+    // Reads require deletedAt == null, so list queries must filter on deletedAt == null too.
+    match /aiLogs/{logId} {
+      allow read: if isTeamMember(resource.data.teamId)
+        && resource.data.deletedAt == null;
+
+      allow create: if isTeamMember(request.resource.data.teamId)
+        && validAiLog(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.deletedAt == null;
+
+      // Edit or soft-delete: author only, still a member, team and creation time are immutable.
+      allow update: if resource.data.userId == request.auth.uid
+        && resource.data.deletedAt == null
+        && isTeamMember(resource.data.teamId)
+        && validAiLog(request.resource.data)
+        && request.resource.data.teamId == resource.data.teamId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (request.resource.data.deletedAt == null || request.resource.data.deletedAt == request.time);
+
+      allow delete: if false; // soft-delete only — set deletedAt instead
     }
 
     // Add new collection rules above this comment using the /firebase-collection skill.
