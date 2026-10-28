@@ -39,7 +39,6 @@ export type AiOutcome = 'accepted' | 'edited' | 'rejected'
 
 export interface AiLog {
   id: string
-  teamId: string
   userId: string // author — must equal the signed-in user (enforced by rules)
   phase: AiPhase
   taskSummary: string

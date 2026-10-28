@@ -32,10 +32,11 @@ export function teamDoc(id: string) {
   return doc(getTeamsCollection(), id)
 }
 
-export function getAiLogsCollection() {
-  return typedCollection<AiLog>('aiLogs')
+/** Logs live in a subcollection of their team: teams/{teamId}/aiLogs */
+export function getAiLogsCollection(teamId: string) {
+  return typedCollection<AiLog>(`teams/${teamId}/aiLogs`)
 }
 
-export function aiLogDoc(id: string) {
-  return doc(getAiLogsCollection(), id)
+export function aiLogDoc(teamId: string, id: string) {
+  return doc(getAiLogsCollection(teamId), id)
 }

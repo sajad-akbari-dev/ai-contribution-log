@@ -103,7 +103,7 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
               description="Log the first AI-assisted task for this team."
             />
           ) : (
-            <LogList logs={logs.data} currentUid={user.uid} />
+            <LogList teamId={teamId} logs={logs.data} currentUid={user.uid} />
           )}
         </>
       )}

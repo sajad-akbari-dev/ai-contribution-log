@@ -42,8 +42,7 @@ export async function createAiLog(
   input: AiLogFormInput
 ): Promise<ActionResult<string>> {
   try {
-    const ref = await addDoc(collection(getClientDb(), 'aiLogs'), {
-      teamId,
+    const ref = await addDoc(collection(getClientDb(), 'teams', teamId, 'aiLogs'), {
       userId: uid,
       phase: input.phase,
       taskSummary: input.taskSummary,
@@ -61,9 +60,9 @@ export async function createAiLog(
 }
 
 /** Soft delete: the log stays in Firestore with deletedAt set; queries filter it out. */
-export async function softDeleteAiLog(logId: string): Promise<ActionResult> {
+export async function softDeleteAiLog(teamId: string, logId: string): Promise<ActionResult> {
   try {
-    await updateDoc(doc(getClientDb(), 'aiLogs', logId), {
+    await updateDoc(doc(getClientDb(), 'teams', teamId, 'aiLogs', logId), {
       deletedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })

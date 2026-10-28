@@ -77,6 +77,7 @@ export function useTeam(teamId: string) {
 
 /**
  * Live (not soft-deleted) logs for a team, newest first.
+ * Reads the teams/{teamId}/aiLogs subcollection.
  * The deletedAt == null filter is required: the `aiLogs` read rule only allows
  * documents with deletedAt == null, so a query without it is rejected.
  * Sorted in the browser to avoid needing a composite index.
@@ -84,7 +85,7 @@ export function useTeam(teamId: string) {
 export function useTeamLogs(teamId: string) {
   return useLiveSubscription<AiLog[]>([], teamId, (next, fail) =>
     onSnapshot(
-      query(getAiLogsCollection(), where('teamId', '==', teamId), where('deletedAt', '==', null)),
+      query(getAiLogsCollection(teamId), where('deletedAt', '==', null)),
       (snap) => {
         const logs = snap.docs.map((d) => ({
           // 'estimate' avoids a null createdAt on a just-written log whose server time is pending

@@ -66,12 +66,11 @@ This enables **lazy migration** — when a document is read, check `_schemaVersi
 
 ## `aiLogs` collection
 
-**Path:** `/aiLogs/{logId}`
-**Access:** Team members read live logs; members create logs as themselves; only the author edits or soft-deletes. Hard-delete is disabled.
+**Path:** `/teams/{teamId}/aiLogs/{logId}` (a subcollection of the team)
+**Access:** Team members read logs; members create logs as themselves; only the author edits or soft-deletes. Hard-delete is disabled.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `teamId` | `string` | Yes | Team the log belongs to; author must be a member. Immutable. |
 | `userId` | `string` | Yes | Author — must equal the signed-in UID. Immutable. |
 | `phase` | `'requirements' \| 'design' \| 'build' \| 'test' \| 'deploy'` | Yes | SDLC phase |
 | `taskSummary` | `string` | Yes | 1–280 characters |
@@ -82,7 +81,9 @@ This enables **lazy migration** — when a document is read, check `_schemaVersi
 | `deletedAt` | `Timestamp \| null` | Yes | `null` while live; set to the server time to soft-delete. |
 | `_schemaVersion` | `1` | Yes | Schema version for lazy migration |
 
-**Queries:** the read rule requires `deletedAt == null`, so every list query must include `where('deletedAt', '==', null)` (see `useTeamLogs`). Lists are sorted in the browser, so no composite index is needed.
+**Why a subcollection:** the team ID comes from the path, so the rules can check membership with `isTeamMember(teamId)` for list queries as well as single reads. The team a log belongs to cannot be changed.
+**Soft-deleted logs:** hidden by the app, not by the rules. `useTeamLogs` queries with `where('deletedAt', '==', null)`. A `deletedAt == null` condition in the read rule made Firestore reject every list query, so team members can still read soft-deleted logs directly.
+**Queries:** lists are sorted in the browser, so no composite index is needed.
 **Writes:** made with the client SDK from the browser so the rules validate them — see `frontend/src/features/ai-log/lib/mutations.ts`.
 
 ---

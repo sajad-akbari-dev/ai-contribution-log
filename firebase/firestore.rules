@@ -42,9 +42,8 @@ service cloud.firestore {
 
     // Field-level validation shared by aiLogs create and update.
     function validAiLog(d) {
-      return d.keys().hasOnly(['teamId', 'userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
-        && d.keys().hasAll(['teamId', 'userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
-        && d.teamId is string
+      return d.keys().hasOnly(['userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
+        && d.keys().hasAll(['userId', 'phase', 'taskSummary', 'outcome', 'minutesSaved', 'createdAt', 'updatedAt', 'deletedAt', '_schemaVersion'])
         && d.userId == request.auth.uid
         && d.phase in ['requirements', 'design', 'build', 'test', 'deploy']
         && d.outcome in ['accepted', 'edited', 'rejected']
@@ -108,32 +107,34 @@ service cloud.firestore {
         && request.resource.data._schemaVersion == 1;
 
       allow delete: if false; // teams are never removed
-    }
 
-    // aiLogs/{logId}
-    // Team members can read the team's live logs. Authors create, edit and soft-delete their own.
-    // Reads require deletedAt == null, so list queries must filter on deletedAt == null too.
-    match /aiLogs/{logId} {
-      allow read: if isTeamMember(resource.data.teamId)
-        && resource.data.deletedAt == null;
+      // teams/{teamId}/aiLogs/{logId}
+      // A subcollection (not a top-level collection) on purpose: the team id comes from the
+      // path, so isTeamMember(teamId) can be evaluated for LIST queries. A flat collection that
+      // passed resource.data.teamId to get() was denied for every query.
+      // Team members read logs; authors create, edit and soft-delete their own.
+      // Soft-deleted logs are hidden by the app's deletedAt == null query filter, not by this
+      // rule: putting deletedAt == null in the read rule made every list query get denied.
+      match /aiLogs/{logId} {
+        allow read: if isTeamMember(teamId);
 
-      allow create: if isTeamMember(request.resource.data.teamId)
-        && validAiLog(request.resource.data)
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.deletedAt == null;
+        allow create: if isTeamMember(teamId)
+          && validAiLog(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.deletedAt == null;
 
-      // Edit or soft-delete: author only, still a member, team and creation time are immutable.
-      allow update: if resource.data.userId == request.auth.uid
-        && resource.data.deletedAt == null
-        && isTeamMember(resource.data.teamId)
-        && validAiLog(request.resource.data)
-        && request.resource.data.teamId == resource.data.teamId
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedAt == request.time
-        && (request.resource.data.deletedAt == null || request.resource.data.deletedAt == request.time);
+        // Edit or soft-delete: author only, still a member; author and creation time are immutable.
+        allow update: if resource.data.userId == request.auth.uid
+          && resource.data.deletedAt == null
+          && isTeamMember(teamId)
+          && validAiLog(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          && (request.resource.data.deletedAt == null || request.resource.data.deletedAt == request.time);
 
-      allow delete: if false; // soft-delete only — set deletedAt instead
+        allow delete: if false; // soft-delete only — set deletedAt instead
+      }
     }
 
     // Add new collection rules above this comment using the /firebase-collection skill.

@@ -9,27 +9,28 @@ import { softDeleteAiLog } from '../lib/mutations'
 import { cardClass, secondaryButtonClass } from './styles'
 
 interface LogListProps {
+  teamId: string
   logs: readonly AiLog[]
   currentUid: string
 }
 
-export function LogList({ logs, currentUid }: LogListProps) {
+export function LogList({ teamId, logs, currentUid }: LogListProps) {
   return (
     <ul className="space-y-2">
       {logs.map((log) => (
-        <LogRow key={log.id} log={log} isOwn={log.userId === currentUid} />
+        <LogRow key={log.id} teamId={teamId} log={log} isOwn={log.userId === currentUid} />
       ))}
     </ul>
   )
 }
 
-function LogRow({ log, isOwn }: { log: AiLog; isOwn: boolean }) {
+function LogRow({ teamId, log, isOwn }: { teamId: string; log: AiLog; isOwn: boolean }) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
     setDeleting(true)
-    const result = await softDeleteAiLog(log.id)
+    const result = await softDeleteAiLog(teamId, log.id)
     if (result.success) {
       toast.success('Log deleted')
     } else {
