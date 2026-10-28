@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { aiLogFormSchema, teamFormSchema } from '@/features/ai-log/schemas'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { aiLogFormSchema, teamFormSchema, type AiLogFormInput } from '@/features/ai-log/schemas'
 
-const validLog = {
+const validLog: AiLogFormInput = {
   phase: 'build',
   taskSummary: 'Drafted unit tests for the login flow',
   outcome: 'accepted',
@@ -35,6 +36,49 @@ describe('aiLogFormSchema', () => {
     expect(aiLogFormSchema.safeParse({ ...validLog, taskSummary: 'x'.repeat(280) }).success).toBe(
       true
     )
+  })
+})
+
+describe('aiLogFormSchema error messages', () => {
+  const messageFor = (input: unknown, field: string) =>
+    aiLogFormSchema.safeParse(input).error?.issues.find((i) => i.path[0] === field)?.message
+
+  it('shows the custom message when no phase or outcome is chosen', () => {
+    expect(messageFor({ ...validLog, phase: '' }, 'phase')).toBe('Choose a phase')
+    expect(messageFor({ ...validLog, outcome: undefined }, 'outcome')).toBe('Choose an outcome')
+  })
+
+  it('shows the custom message when minutes saved is blank (NaN)', () => {
+    expect(messageFor({ ...validLog, minutesSaved: Number.NaN }, 'minutesSaved')).toBe(
+      'Enter the minutes saved'
+    )
+  })
+
+  it('shows specific messages for fractional and out-of-range minutes', () => {
+    expect(messageFor({ ...validLog, minutesSaved: 12.5 }, 'minutesSaved')).toBe(
+      'Minutes saved must be a whole number'
+    )
+    expect(messageFor({ ...validLog, minutesSaved: 500 }, 'minutesSaved')).toBe(
+      'Minutes saved cannot exceed 480'
+    )
+    expect(messageFor({ ...validLog, minutesSaved: -5 }, 'minutesSaved')).toBe(
+      'Minutes saved cannot be negative'
+    )
+  })
+
+  it('works through the react-hook-form zodResolver the forms use', async () => {
+    const resolver = zodResolver(aiLogFormSchema)
+    const bad = await resolver({ ...validLog, minutesSaved: 500 }, undefined, {
+      fields: {},
+      shouldUseNativeValidation: false,
+    })
+    expect(bad.errors.minutesSaved?.message).toBe('Minutes saved cannot exceed 480')
+
+    const good = await resolver(validLog, undefined, {
+      fields: {},
+      shouldUseNativeValidation: false,
+    })
+    expect(good.errors).toEqual({})
   })
 })
 
