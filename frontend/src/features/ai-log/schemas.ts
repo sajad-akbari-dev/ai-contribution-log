@@ -11,15 +11,15 @@ import {
 // the rules are what actually enforce them.
 
 export const aiLogFormSchema = z.object({
-  phase: z.enum(AI_PHASES, { errorMap: () => ({ message: 'Choose a phase' }) }),
+  phase: z.enum(AI_PHASES, { error: 'Choose a phase' }),
   taskSummary: z
     .string()
     .trim()
     .min(1, 'Describe the task')
     .max(MAX_SUMMARY_LENGTH, `Keep it under ${MAX_SUMMARY_LENGTH} characters`),
-  outcome: z.enum(AI_OUTCOMES, { errorMap: () => ({ message: 'Choose an outcome' }) }),
+  outcome: z.enum(AI_OUTCOMES, { error: 'Choose an outcome' }),
   minutesSaved: z
-    .number({ invalid_type_error: 'Enter the minutes saved' })
+    .number({ error: 'Enter the minutes saved' })
     .int('Minutes saved must be a whole number')
     .min(0, 'Minutes saved cannot be negative')
     .max(MAX_MINUTES_SAVED, `Minutes saved cannot exceed ${MAX_MINUTES_SAVED}`),
