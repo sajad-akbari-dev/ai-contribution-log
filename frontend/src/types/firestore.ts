@@ -23,3 +23,29 @@ export interface UserProfile {
 }
 
 export type CreateUserProfileInput = Omit<UserProfile, 'createdAt' | 'updatedAt'>
+
+export interface Team {
+  id: string
+  name: string
+  ownerId: string
+  memberIds: string[] // always includes ownerId; used by security rules for membership checks
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  _schemaVersion: 1
+}
+
+export type AiPhase = 'requirements' | 'design' | 'build' | 'test' | 'deploy'
+export type AiOutcome = 'accepted' | 'edited' | 'rejected'
+
+export interface AiLog {
+  id: string
+  userId: string // author — must equal the signed-in user (enforced by rules)
+  phase: AiPhase
+  taskSummary: string
+  outcome: AiOutcome
+  minutesSaved: number
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  deletedAt: Timestamp | null // soft delete — null means live
+  _schemaVersion: 1
+}

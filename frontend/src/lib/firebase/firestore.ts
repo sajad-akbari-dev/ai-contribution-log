@@ -1,6 +1,6 @@
 import { collection, doc, type CollectionReference, type DocumentData } from 'firebase/firestore'
 import { getClientDb } from './client'
-import type { UserProfile } from '@/types/firestore'
+import type { AiLog, Team, UserProfile } from '@/types/firestore'
 
 /**
  * Creates a typed Firestore collection reference.
@@ -22,4 +22,21 @@ export function getUsersCollection() {
 
 export function userDoc(uid: string) {
   return doc(getUsersCollection(), uid)
+}
+
+export function getTeamsCollection() {
+  return typedCollection<Team>('teams')
+}
+
+export function teamDoc(id: string) {
+  return doc(getTeamsCollection(), id)
+}
+
+/** Logs live in a subcollection of their team: teams/{teamId}/aiLogs */
+export function getAiLogsCollection(teamId: string) {
+  return typedCollection<AiLog>(`teams/${teamId}/aiLogs`)
+}
+
+export function aiLogDoc(teamId: string, id: string) {
+  return doc(getAiLogsCollection(teamId), id)
 }

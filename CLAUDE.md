@@ -61,12 +61,13 @@ Everything a feature build needs already exists below. **Do not survey the codeb
 | `frontend/src/actions/auth.actions.ts` | `requireAuth()` (redirects if unauthed, returns session with `.uid`), `getServerSession()`, `serverSignOut()` | First line of every Server Action / protected page |
 | `frontend/src/lib/firebase/admin.ts` | `adminAuth`, `adminDb` (lazy, `server-only`) | All server-side Firebase |
 | `frontend/src/lib/firebase/client.ts` | `getClientApp/Auth/Db()` | Browser SDK (Client Components only) |
-| `frontend/src/lib/firebase/firestore.ts` | `getUsersCollection()`, `userDoc(uid)` — add new collections here as `get{X}Collection()` functions (`typedCollection` is module-private) | Typed collection access |
+| `frontend/src/lib/firebase/firestore.ts` | `getUsersCollection()`, `userDoc(uid)`, `getTeamsCollection()`, `teamDoc(id)`, `getAiLogsCollection(teamId)`, `aiLogDoc(teamId, id)` — add new collections here as `get{X}Collection()` functions (`typedCollection` is module-private) | Typed collection access |
 | `frontend/src/lib/firebase/auth.ts` | `signInWithEmail`, `signUpWithEmail`, `signInWithGoogle`, `signOut`, `resetPassword`, `getIdToken` | Client sign-in flows |
 | `frontend/src/hooks/useFirestore.ts` | `useCollection(ref, ...constraints)` → `{ data, loading, error }` (onSnapshot) | Realtime lists in Client Components |
 | `frontend/src/hooks/useAuth.ts` | `useAuth()` → `{ user, profile, ... }` (AuthContext) | Current user in Client Components |
 | `frontend/src/types/index.ts` | `ActionResult<T>` `{ success, error?, data? }` + re-exports of `types/auth.ts`, `types/firestore.ts` | Return type of every Server Action |
-| `frontend/src/types/firestore.ts` | `UserProfile` — add new collection interfaces here (always with `_schemaVersion: 1`) | Collection types |
+| `frontend/src/types/firestore.ts` | `UserProfile`, `Team`, `AiLog`, `AiPhase`, `AiOutcome` — add new collection interfaces here (always with `_schemaVersion: 1`) | Collection types |
+| `frontend/src/features/ai-log/` | `components/` (TeamsList, CreateTeamForm, TeamDashboard, AddLogForm, AddMemberForm, LogList, PhaseSummaryTable, CopyUid) · `hooks/useLiveData.ts` (`useUserTeams`, `useTeam`, `useTeamLogs` → `{ data, loading, error, retry }`) · `lib/mutations.ts` (client-SDK writes: `createTeam`, `addTeamMember`, `createAiLog`, `softDeleteAiLog(teamId, logId)`) · `lib/summary.ts` (`summarizeByPhase`) · `schemas.ts` (Zod) | AI Contribution Log feature. Writes use the **client SDK** on purpose so Firestore rules enforce validation (the Admin SDK would bypass them) |
 | `frontend/src/lib/validations/` | `loginSchema`, `signupSchema`, `registerSchema`, `resetPasswordSchema` (`auth.ts`) · `idSchema`, `paginationSchema` (`common.ts`) | Zod schemas — add feature schemas here or in the feature folder |
 | `frontend/src/lib/utils.ts` | `cn()`, `formatDate`, `formatDatetime`, `truncate` | Class merging, formatting |
 | `frontend/src/components/layout/` | `DashboardShell`, `Sidebar` (navItems array — add links here), `Navbar`, `PageHeader` | App shell |
@@ -87,11 +88,11 @@ Everything a feature build needs already exists below. **Do not survey the codeb
 
 ### Firestore rules helpers (`firebase/firestore.rules`)
 
-`isAuthenticated()` · `isOwner(uid)` · `isAdmin()` (Firestore read) · `hasCustomClaim(claim)` (no read) · `notDeleted()`
+`isAuthenticated()` · `isOwner(uid)` · `isAdmin()` (Firestore read) · `hasCustomClaim(claim)` (no read) · `notDeleted()` · `isTeamMember(teamId)` (Firestore read) · `validAiLog(d)`
 
 ### Existing routes/pages
 
-Pages: `/` · `/auth/signin` · `/auth/signup` · `/dashboard` · `/profile` · `/settings` (route groups `(auth)`, `(dashboard)`). Backend: `GET /api/health` (public); everything else under `/api` requires `Authorization: Bearer <ID token>`.
+Pages: `/` · `/auth/signin` · `/auth/signup` · `/dashboard` · `/teams` · `/teams/[teamId]` · `/profile` (shows the user ID teammates need to add you) · `/settings` (route groups `(auth)`, `(dashboard)`). Backend: `GET /api/health` (public); everything else under `/api` requires `Authorization: Bearer <ID token>`.
 
 ---
 
